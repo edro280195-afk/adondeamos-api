@@ -14,6 +14,7 @@ public static class DependencyInjection
 
         // Servicios de negocio (uno por módulo).
         services.AddScoped<AuthService>();
+        services.AddScoped<GroupService>();
 
         return services;
     }

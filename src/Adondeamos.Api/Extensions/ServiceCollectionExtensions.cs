@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Adondeamos.Api.Middleware;
 using Adondeamos.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -15,7 +17,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddControllers();
+        services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                // Los enums viajan como texto camelCase (ej. "tiktok", "googleMaps") en vez de números.
+                options.JsonSerializerOptions.Converters.Add(
+                    new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+            });
         services.AddEndpointsApiExplorer();
 
         // Errores centralizados -> ProblemDetails.

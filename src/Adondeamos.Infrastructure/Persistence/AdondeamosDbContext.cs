@@ -1,7 +1,9 @@
 using Adondeamos.Application.Abstractions;
+using Adondeamos.Application.Common.Exceptions;
 using Adondeamos.Domain.Entities;
 using Adondeamos.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Adondeamos.Infrastructure.Persistence;
 
@@ -28,6 +30,22 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
     public DbSet<DecisionOption> DecisionOptions => Set<DecisionOption>();
     public DbSet<Vote> Votes => Set<Vote>();
     public DbSet<DecisionMatch> DecisionMatches => Set<DecisionMatch>();
+
+    /// <summary>
+    /// Traduce las violaciones de unicidad de PostgreSQL (índices únicos del esquema) a
+    /// <see cref="ConflictException"/> para que la API responda 409 en lugar de 500.
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new ConflictException("La operación viola una restricción de unicidad (registro duplicado).");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
