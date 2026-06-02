@@ -39,7 +39,15 @@ public static class DependencyInjection
 
         services.AddSingleton(dataSource);
         services.AddDbContext<AdondeamosDbContext>((sp, options) =>
-            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>())
+            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
+                {
+                    npgsqlOptions.MapEnum<PlaceOrigin>("place_origin", nameTranslator: translator);
+                    npgsqlOptions.MapEnum<SocialNetwork>("social_network", nameTranslator: translator);
+                    npgsqlOptions.MapEnum<SaveStatus>("save_status", nameTranslator: translator);
+                    npgsqlOptions.MapEnum<ContentVisibility>("content_visibility", nameTranslator: translator);
+                    npgsqlOptions.MapEnum<GroupRole>("group_role", nameTranslator: translator);
+                    npgsqlOptions.MapEnum<InvitationStatus>("invitation_status", nameTranslator: translator);
+                })
                    .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AdondeamosDbContext>());

@@ -2,11 +2,13 @@
 
 Backend de **Adondeamos** — app hiperlocal de Nuevo Laredo para guardar lugares vistos en redes y
 decidir a dónde ir (solo o en grupo). Web API en ASP.NET Core (.NET 10) sobre PostgreSQL (Neon).
+El cliente V1 será una app móvil nativa en Flutter.
 
 ## Requisitos
 
 - SDK de **.NET 10**
-- Una base **PostgreSQL en Neon** con el esquema de [`db/001_init_schema.sql`](db/001_init_schema.sql) ya aplicado
+- Una base **PostgreSQL en Neon** con [`db/001_init_schema.sql`](db/001_init_schema.sql) y
+  [`db/002_group_invitations.sql`](db/002_group_invitations.sql) ya aplicados, en ese orden
 - Una **API key de Google Places (New)** con Places API habilitada
 
 ## Configuración (secretos)
@@ -34,7 +36,8 @@ GooglePlaces__ApiKey=<api-key>
 ```
 
 Otros ajustes con valor por defecto (se pueden sobrescribir): `Jwt:Issuer`, `Jwt:Audience`,
-`Jwt:ExpirationMinutes` y `Cors:AllowedOrigins` (lista de orígenes del frontend).
+`Jwt:ExpirationMinutes` y `Cors:AllowedOrigins`. La app Flutter nativa no depende de CORS, pero se
+mantiene la configuración para Swagger, pruebas locales o una futura versión web/admin.
 
 ## Correr
 
@@ -47,6 +50,35 @@ dotnet run --project src/Adondeamos.Api
 
 En Swagger, usa **Authorize** y pega `Bearer <token>` (el token lo devuelven `/auth/register` y
 `/auth/login`) para probar los endpoints protegidos.
+
+## Alcance V1
+
+El backend V1 cubre:
+
+- Auth: registro, login y perfil (`/auth/register`, `/auth/login`, `/me`).
+- Groups: grupos con invitaciones confirmadas (`/groups`, `/groups/{id}/invitations`,
+  `/me/invitations`, `/invitations/{id}/accept|reject`).
+- Places: búsqueda/resolución con Google Places y lugares propios (`/places/search`,
+  `/places/resolve`, `/places`).
+- Saves: guardados por usuario, filtros, edición y borrado (`/saves`).
+- Lists: listas personales o de grupo con elementos (`/lists`).
+- Decide/match: sesiones en solitario o grupo, opciones, votos y match persistido (`/decisions`).
+
+La capa social pública (reseñas, fotos, follows, badges e interacciones) existe en el esquema como
+gancho de Fase 2, pero todavía no tiene endpoints. El recomendador inteligente queda para Fase 3.
+
+## Smoke test V1
+
+Con el API corriendo localmente:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-v1.ps1 -BaseUrl http://localhost:5172
+```
+
+El script crea usuarios smoke con correos únicos, crea un grupo, envía y acepta una invitación, crea
+un lugar propio, guarda el lugar para ambos usuarios, crea una decisión grupal, vota con ambos y
+verifica que el match quede persistido. No usa Google Places para evitar costo y dependencias
+externas durante el smoke.
 
 ## Estructura
 

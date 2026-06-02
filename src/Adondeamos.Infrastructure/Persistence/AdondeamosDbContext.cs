@@ -82,6 +82,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<GroupMember>(entity =>
         {
             entity.HasKey(gm => new { gm.GroupId, gm.UserId });
+            entity.Property(gm => gm.Role).HasColumnType("group_role");
             entity.Property(gm => gm.JoinedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.HasOne(gm => gm.Group)
                   .WithMany(g => g.Members)
@@ -98,6 +99,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         {
             entity.HasKey(i => i.Id);
             entity.Property(i => i.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(i => i.Status).HasColumnType("invitation_status");
             entity.Property(i => i.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.HasOne(i => i.Group)
                   .WithMany()
@@ -110,6 +112,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         {
             entity.HasKey(p => p.Id);
             entity.Property(p => p.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(p => p.Origin).HasColumnType("place_origin");
             entity.Property(p => p.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.Property(p => p.UpdatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAddOrUpdate();
             entity.Property(p => p.Latitude).HasColumnType("numeric(9,6)");
@@ -121,6 +124,9 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         {
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(s => s.SourceNetwork).HasColumnType("social_network");
+            entity.Property(s => s.Visibility).HasColumnType("content_visibility");
+            entity.Property(s => s.Status).HasColumnType("save_status");
             entity.Property(s => s.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.Property(s => s.UpdatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAddOrUpdate();
             entity.HasOne(s => s.Place)
@@ -134,6 +140,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         {
             entity.HasKey(l => l.Id);
             entity.Property(l => l.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(l => l.Visibility).HasColumnType("content_visibility");
             entity.Property(l => l.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.Property(l => l.UpdatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAddOrUpdate();
         });
