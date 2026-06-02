@@ -34,6 +34,7 @@ public static class DependencyInjection
         dataSourceBuilder.MapEnum<SaveStatus>("save_status", translator);
         dataSourceBuilder.MapEnum<ContentVisibility>("content_visibility", translator);
         dataSourceBuilder.MapEnum<GroupRole>("group_role", translator);
+        dataSourceBuilder.MapEnum<InvitationStatus>("invitation_status", translator);
         var dataSource = dataSourceBuilder.Build();
 
         services.AddSingleton(dataSource);
@@ -55,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<ISaveRepository, SaveRepository>();
         services.AddScoped<IListRepository, ListRepository>();
         services.AddScoped<IDecisionRepository, DecisionRepository>();
+        services.AddScoped<IInvitationRepository, InvitationRepository>();
 
         // Cliente de Google Places (Places API New)
         services.AddGooglePlaces(configuration);

@@ -54,14 +54,26 @@ Content-Type: application/json
 GET {{host}}/groups
 Authorization: Bearer {{token}}
 
-### Agregar miembro al grupo (por correo)
-POST {{host}}/groups/{{createGroup.response.body.id}}/members
+### Invitar a alguien al grupo (queda pendiente hasta que el invitado acepte)
+POST {{host}}/groups/{{createGroup.response.body.id}}/invitations
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "email": "otra@example.com"
 }
+
+### Mis invitaciones pendientes (esto lo consulta el usuario invitado)
+GET {{host}}/me/invitations
+Authorization: Bearer {{token}}
+
+### Aceptar una invitación (usa el id que devuelve /me/invitations)
+POST {{host}}/invitations/PEGA_AQUI_INVITATION_ID/accept
+Authorization: Bearer {{token}}
+
+### Rechazar una invitación
+POST {{host}}/invitations/PEGA_AQUI_INVITATION_ID/reject
+Authorization: Bearer {{token}}
 
 ### Buscar lugares (Autocomplete de Google)
 GET {{host}}/places/search?q=tacos nuevo laredo

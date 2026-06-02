@@ -11,23 +11,17 @@ namespace Adondeamos.Application.Services;
 public sealed class GroupService
 {
     private readonly IGroupRepository _groups;
-    private readonly IUserRepository _users;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IValidator<CreateGroupRequest> _createValidator;
-    private readonly IValidator<AddMemberRequest> _addMemberValidator;
 
     public GroupService(
         IGroupRepository groups,
-        IUserRepository users,
         IUnitOfWork unitOfWork,
-        IValidator<CreateGroupRequest> createValidator,
-        IValidator<AddMemberRequest> addMemberValidator)
+        IValidator<CreateGroupRequest> createValidator)
     {
         _groups = groups;
-        _users = users;
         _unitOfWork = unitOfWork;
         _createValidator = createValidator;
-        _addMemberValidator = addMemberValidator;
     }
 
     public async Task<GroupDetailResponse> CreateGroupAsync(Guid userId, CreateGroupRequest request, CancellationToken cancellationToken = default)
@@ -66,45 +60,6 @@ public sealed class GroupService
         EnsureMember(group, userId);
 
         return GroupDetailResponse.FromEntity(group);
-    }
-
-    public async Task<GroupMemberResponse> AddMemberAsync(Guid requesterUserId, Guid groupId, AddMemberRequest request, CancellationToken cancellationToken = default)
-    {
-        await _addMemberValidator.ValidateAndThrowAsync(request, cancellationToken);
-
-        var group = await _groups.GetDetailAsync(groupId, cancellationToken)
-            ?? throw new NotFoundException("Grupo no encontrado.");
-
-        // Solo un miembro del grupo puede agregar a otros.
-        EnsureMember(group, requesterUserId);
-
-        var target = request.UserId.HasValue
-            ? await _users.GetByIdAsync(request.UserId.Value, cancellationToken)
-            : await _users.GetByEmailAsync(request.Email!.Trim(), cancellationToken);
-
-        if (target is null)
-        {
-            throw new NotFoundException("No se encontró el usuario a agregar.");
-        }
-
-        if (group.Members.Any(m => m.UserId == target.Id))
-        {
-            throw new ConflictException("Ese usuario ya es miembro del grupo.");
-        }
-
-        var member = new GroupMember
-        {
-            GroupId = groupId,
-            UserId = target.Id,
-            Role = GroupRole.Member
-        };
-
-        _groups.AddMember(member);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // member.JoinedAt lo generó la base; el usuario lo adjuntamos para armar la respuesta.
-        member.User = target;
-        return GroupMemberResponse.FromEntity(member);
     }
 
     private static void EnsureMember(Group group, Guid userId)

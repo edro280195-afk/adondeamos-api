@@ -46,7 +46,8 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
 
 ```
 Adondeamos.slnx
-db/001_init_schema.sql          # Fuente de verdad del esquema (aplicado en Neon)
+db/001_init_schema.sql          # Esquema base (aplicado en Neon)
+db/002_group_invitations.sql    # Invitaciones a grupos (aplicar en Neon antes de usar grupos)
 src/
   Adondeamos.Domain/            # Entidades y enums (calcan el esquema). Sin dependencias.
     Entities/  Enums/
@@ -68,8 +69,9 @@ src/
 
 ## Alcance V1 (lo que SÍ se construye)
 
-Auth (`/auth/register`, `/auth/login`, `/me`), Groups, Places (search/resolve/own), Saves, Lists,
-Decide/match (`/decisions`).
+Auth (`/auth/register`, `/auth/login`, `/me`), Groups (con invitaciones: el invitado debe aceptar —
+`/groups/{id}/invitations`, `/me/invitations`, `/invitations/{id}/accept|reject`), Places
+(search/resolve/own), Saves, Lists, Decide/match (`/decisions`).
 
 ## Fuera de alcance (NO construir aún)
 

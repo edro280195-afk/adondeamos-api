@@ -22,6 +22,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
     public DbSet<User> Users => Set<User>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<Place> Places => Set<Place>();
     public DbSet<Save> Saves => Set<Save>();
     public DbSet<List> Lists => Set<List>();
@@ -58,6 +59,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
         modelBuilder.HasPostgresEnum<SaveStatus>(name: "save_status");
         modelBuilder.HasPostgresEnum<ContentVisibility>(name: "content_visibility");
         modelBuilder.HasPostgresEnum<GroupRole>(name: "group_role");
+        modelBuilder.HasPostgresEnum<InvitationStatus>(name: "invitation_status");
 
         // --- users
         modelBuilder.Entity<User>(entity =>
@@ -88,6 +90,18 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
             entity.HasOne(gm => gm.User)
                   .WithMany()
                   .HasForeignKey(gm => gm.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // --- group_invitations (db/002)
+        modelBuilder.Entity<GroupInvitation>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(i => i.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
+            entity.HasOne(i => i.Group)
+                  .WithMany()
+                  .HasForeignKey(i => i.GroupId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

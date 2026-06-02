@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<SaveService>();
         services.AddScoped<ListService>();
         services.AddScoped<DecisionService>();
+        services.AddScoped<InvitationService>();
 
         return services;
     }

@@ -44,17 +44,4 @@ public sealed class GroupsController : ControllerBase
         var group = await _groupService.GetGroupAsync(User.GetUserId(), id, cancellationToken);
         return Ok(group);
     }
-
-    /// <summary>Agrega un miembro al grupo (por correo o id de usuario).</summary>
-    [HttpPost("{id:guid}/members")]
-    [ProducesResponseType(typeof(GroupMemberResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<GroupMemberResponse>> AddMember(Guid id, AddMemberRequest request, CancellationToken cancellationToken)
-    {
-        var member = await _groupService.AddMemberAsync(User.GetUserId(), id, request, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id }, member);
-    }
 }
