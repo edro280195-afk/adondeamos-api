@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<GroupService>();
         services.AddScoped<PlaceService>();
         services.AddScoped<SaveService>();
+        services.AddScoped<ListService>();
 
         return services;
     }

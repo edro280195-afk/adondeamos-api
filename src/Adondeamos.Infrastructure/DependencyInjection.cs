@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IPlaceRepository, PlaceRepository>();
         services.AddScoped<ISaveRepository, SaveRepository>();
+        services.AddScoped<IListRepository, ListRepository>();
 
         // Cliente de Google Places (Places API New)
         services.AddGooglePlaces(configuration);
