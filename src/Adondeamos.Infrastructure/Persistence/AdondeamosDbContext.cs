@@ -1,3 +1,4 @@
+using Adondeamos.Application.Abstractions;
 using Adondeamos.Domain.Entities;
 using Adondeamos.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +9,9 @@ namespace Adondeamos.Infrastructure.Persistence;
 /// DbContext mapeado al esquema EXISTENTE (db/001_init_schema.sql). No se usan migraciones de EF:
 /// el esquema lo manejan los archivos SQL. Aquí solo describimos cómo calzan entidades y columnas.
 /// El mapeo de nombres a snake_case lo aplica UseSnakeCaseNamingConvention en la configuración del contexto.
+/// Implementa <see cref="IUnitOfWork"/>: el propio contexto confirma los cambios (SaveChangesAsync).
 /// </summary>
-public class AdondeamosDbContext : DbContext
+public class AdondeamosDbContext : DbContext, IUnitOfWork
 {
     public AdondeamosDbContext(DbContextOptions<AdondeamosDbContext> options) : base(options)
     {

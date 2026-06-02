@@ -1,23 +1,34 @@
+using Adondeamos.Api.Extensions;
+using Adondeamos.Application;
+using Adondeamos.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services
+    .AddApplication()
+    .AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddApiServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Manejo centralizado de errores -> ProblemDetails.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(ServiceCollectionExtensions.CorsPolicyName);
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Health check para Render (liveness simple).
+app.MapHealthChecks("/health");
 
 app.Run();
