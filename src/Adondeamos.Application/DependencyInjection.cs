@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<PlaceService>();
         services.AddScoped<SaveService>();
         services.AddScoped<ListService>();
+        services.AddScoped<DecisionService>();
 
         return services;
     }
