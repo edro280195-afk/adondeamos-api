@@ -1,0 +1,27 @@
+# Archivos de desarrollo local
+**/.vs/
+**/.vscode/
+**/.idea/
+**/bin/
+**/obj/
+**/.git/
+**/.gitattributes
+**/.gitignore
+
+# Secretos locales
+**/appsettings.*.local.json
+**/secrets.json
+**/*.env
+**/.env
+
+# Logs, tests, paquetes
+**/TestResults/
+**/*.log
+
+# Documentación y scripts (no necesarios en el contenedor)
+README.md
+AGENTS.md
+CLAUDE.md
+docs/
+scripts/
+db/
