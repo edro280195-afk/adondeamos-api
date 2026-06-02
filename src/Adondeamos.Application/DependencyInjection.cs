@@ -1,3 +1,4 @@
+using Adondeamos.Application.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,7 +12,9 @@ public static class DependencyInjection
         // Registra todos los validadores de FluentValidation de este ensamblado.
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
-        // Servicios de negocio (se registran al construir cada módulo).
+        // Servicios de negocio (uno por módulo).
+        services.AddScoped<AuthService>();
+
         return services;
     }
 }

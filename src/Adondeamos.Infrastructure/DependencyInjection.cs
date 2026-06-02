@@ -1,6 +1,7 @@
 using Adondeamos.Application.Abstractions;
 using Adondeamos.Domain.Enums;
 using Adondeamos.Infrastructure.Persistence;
+using Adondeamos.Infrastructure.Repositories;
 using Adondeamos.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,7 +47,8 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
-        // Repositorios y cliente de Google Places se registran al construir cada módulo.
+        // Repositorios
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }
