@@ -1,0 +1,38 @@
+# Compilados de .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+out/
+
+# Resultados y artefactos
+*.user
+*.suo
+*.userprefs
+*.cache
+*.dll
+*.pdb
+TestResults/
+[Ll]og/
+[Ll]ogs/
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# Secretos locales (NUNCA commitear)
+appsettings.*.local.json
+secrets.json
+*.env
+.env
+
+# Misc del sistema
+.DS_Store
+Thumbs.db
