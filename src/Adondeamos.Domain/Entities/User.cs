@@ -11,10 +11,13 @@ public class User
     /// <summary>Nombre visible.</summary>
     public string Name { get; set; } = null!;
 
-    /// <summary>Correo electrónico (requerido pero no usado para login principal).</summary>
+    /// <summary>Correo electrónico. Identidad y recuperación; no es el campo de login.</summary>
     public string Email { get; set; } = null!;
 
-    /// <summary>Hash de la contraseña.</summary>
+    /// <summary>True cuando el usuario verificó su correo pulsando el link de confirmación.</summary>
+    public bool EmailConfirmed { get; set; }
+
+    /// <summary>Hash de la contraseña. Nulo si solo usa login social.</summary>
     public string? PasswordHash { get; set; }
 
     /// <summary>URL de la foto de perfil (el archivo vive en R2/S3, aquí solo la URL).</summary>

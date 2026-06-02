@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<ListService>();
         services.AddScoped<DecisionService>();
         services.AddScoped<InvitationService>();
+        services.AddScoped<EmailConfirmationService>();
 
         return services;
     }

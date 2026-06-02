@@ -1,5 +1,7 @@
 using Adondeamos.Application.Abstractions;
+using Adondeamos.Application.Common.Options;
 using Adondeamos.Domain.Enums;
+using Adondeamos.Infrastructure.Email;
 using Adondeamos.Infrastructure.Google;
 using Adondeamos.Infrastructure.Persistence;
 using Adondeamos.Infrastructure.Repositories;
@@ -65,6 +67,23 @@ public static class DependencyInjection
         services.AddScoped<IListRepository, ListRepository>();
         services.AddScoped<IDecisionRepository, DecisionRepository>();
         services.AddScoped<IInvitationRepository, InvitationRepository>();
+        services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+
+        // Opciones de auth y app (usadas por los servicios de Application)
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+        services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
+
+        // Envío de correo: SMTP real si hay credenciales; DevEmailSender si no (solo loguea el link).
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        var smtpOptions = configuration.GetSection(SmtpOptions.SectionName).Get<SmtpOptions>() ?? new SmtpOptions();
+        if (smtpOptions.IsConfigured)
+        {
+            services.AddTransient<IEmailSender, SmtpEmailSender>();
+        }
+        else
+        {
+            services.AddTransient<IEmailSender, DevEmailSender>();
+        }
 
         // Cliente de Google Places (Places API New)
         services.AddGooglePlaces(configuration);

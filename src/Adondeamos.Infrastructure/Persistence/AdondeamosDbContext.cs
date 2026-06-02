@@ -23,6 +23,7 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
     public DbSet<Place> Places => Set<Place>();
     public DbSet<Save> Saves => Set<Save>();
     public DbSet<List> Lists => Set<List>();
@@ -68,6 +69,15 @@ public class AdondeamosDbContext : DbContext, IUnitOfWork
             entity.Property(u => u.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
             entity.Property(u => u.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
             entity.Property(u => u.UpdatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAddOrUpdate();
+            entity.Property(u => u.EmailConfirmed).HasDefaultValue(false);
+        });
+
+        // --- email_verification_tokens (db/004)
+        modelBuilder.Entity<EmailVerificationToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
+            entity.Property(t => t.CreatedAt).HasDefaultValueSql("now()").ValueGeneratedOnAdd();
         });
 
         // --- groups (sin updated_at en el esquema)

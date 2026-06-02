@@ -13,6 +13,18 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
 - DTOs de entrada/salida: **no se exponen las entidades** directamente.
 - Si algo es ambiguo, preguntar antes de implementar.
 
+## Modelo de identidad
+
+| Capa | Responsable | Notas |
+|---|---|---|
+| **email** | Backend | Identidad única y recuperación. Se confirma al registrarse. |
+| **username** | Backend | Handle de login hoy; handle público para capa social mañana. |
+| **contraseña** | Backend | BCrypt. Login social: futuro. |
+| **biometría** | Flutter (cliente) | Desbloquea localmente el JWT guardado. El servidor **no la conoce ni la valida**. |
+
+El backend **no implementa biometría ni passkeys**. El cliente Flutter guarda el JWT cifrado y usa
+la biometría del dispositivo para desbloquearlo; desde la perspectiva del API es transparente.
+
 ## Decisiones técnicas (fijas)
 
 - **ASP.NET Core, .NET 10 LTS.**
@@ -28,6 +40,10 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
   EF los marca como generados por el almacén y los lee de vuelta.
 - **Autenticación con JWT** (register/login por **username**, no por email). Contraseñas con **BCrypt**.
   Login social queda para después.
+- **Confirmación de email**: token de un solo uso (SHA-256 del token en claro), expirable (48h por
+  defecto). En dev `Auth:AutoConfirmEmail=true` confirma al registrar sin necesidad de clic.
+  En prod se envía por SMTP real (MailKit). `Auth:RequireConfirmedEmailToLogin` controla si el login
+  bloquea a usuarios no confirmados.
 - **Swagger/OpenAPI** habilitado. **CORS** configurado para pruebas locales, Swagger, Flutter web
   opcional o una futura consola admin. El cliente V1 principal será **Flutter nativo**.
 - **Health check** en `GET /health` (Render lo necesita; evita cold starts). Es liveness simple, no toca la base.
@@ -49,35 +65,48 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
 ```
 Adondeamos.slnx
 db/
-  001_init_schema.sql          # Esquema base (aplicado en Neon)
-  002_group_invitations.sql    # Tabla group_invitations + enum invitation_status
-  003_add_username_to_users.sql# Columna username en users (índice único lower(username))
+  001_init_schema.sql             # Esquema base (aplicado en Neon)
+  002_group_invitations.sql       # Tabla group_invitations + enum invitation_status
+  003_add_username_to_users.sql   # Columna username en users (índice único lower(username))
+  004_add_email_confirmation.sql  # email_confirmed + email_verification_tokens + schema_migrations
 scripts/
-  smoke-v1.ps1                 # Smoke test end-to-end del flujo V1 completo
+  smoke-v1.ps1                    # Smoke test end-to-end del flujo V1 completo
 src/
-  Adondeamos.Domain/           # Entidades y enums (calcan el esquema). Sin dependencias.
+  Adondeamos.Domain/              # Entidades y enums (calcan el esquema). Sin dependencias.
     Entities/  Enums/
-  Adondeamos.Application/      # DTOs, validadores, servicios, interfaces (repos, JWT, hasher, Google).
+  Adondeamos.Application/         # DTOs, validadores, servicios, interfaces.
     Abstractions/  Common/  DTOs/  Services/  Validators/
-  Adondeamos.Infrastructure/   # DbContext, repositorios, JWT, hasher, cliente de Google Places.
-    Persistence/  Repositories/  Security/  Google/
-  Adondeamos.Api/              # Controllers, middleware, Program.cs, configuración.
+  Adondeamos.Infrastructure/      # DbContext, repositorios, JWT, email (Dev/SMTP), Google Places.
+    Persistence/  Repositories/  Security/  Email/  Google/
+  Adondeamos.Api/                 # Controllers, middleware, Program.cs, configuración.
     Controllers/  Extensions/  Middleware/
 ```
 
 ## Modelo de datos relevante
 
-### Tabla `users` (después de db/001 + db/003)
+### Tabla `users` (después de db/001 + db/003 + db/004)
 
 | columna | tipo | notas |
 |---|---|---|
 | `id` | uuid PK | `gen_random_uuid()` |
 | `username` | text UNIQUE | login principal; `lower(username)` único |
 | `name` | text | nombre visible |
-| `email` | text UNIQUE | registro/contacto; no es el campo de login |
+| `email` | text UNIQUE | identidad y recuperación; no es el campo de login |
+| `email_confirmed` | boolean | false al registrar; true tras confirmar o si AutoConfirmEmail |
 | `password_hash` | text | BCrypt; nulo si solo login social |
 | `avatar_url` | text | URL de la foto de perfil |
 | `created_at` / `updated_at` | timestamptz | trigger automático |
+
+### Tabla `email_verification_tokens` (db/004)
+
+| columna | tipo | notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid FK | CASCADE on delete |
+| `token_hash` | text | SHA-256 del token en claro (el token real nunca se guarda) |
+| `expires_at` | timestamptz | 48h por defecto |
+| `consumed_at` | timestamptz | nulo = válido; con valor = ya usado |
+| `created_at` | timestamptz | |
 
 ### Enums nativos (PostgreSQL)
 
@@ -94,13 +123,16 @@ src/
 
 ## Alcance V1 (lo que SÍ se construye)
 
-Auth (`/auth/register`, `/auth/login`, `/me`), Groups (con invitaciones: el invitado debe aceptar —
+Auth (`/auth/register`, `/auth/login`, `/auth/confirm-email`, `/auth/resend-confirmation`, `/me`),
+Groups (con invitaciones: el invitado debe aceptar —
 `/groups/{id}/invitations`, `/me/invitations`, `/invitations/{id}/accept|reject`), Places
 (search/resolve/own), Saves, Lists, Decide/match (`/decisions`). V1 se considera completo cuando
 compila y pasa el smoke test `scripts/smoke-v1.ps1` contra Neon.
 
 ## Fuera de alcance (NO construir aún)
 
+- **Recuperación de contraseña** ("olvidé mi contraseña") — siguiente paso lógico, aún no construido.
+- **Biometría/passkeys en el backend** — el servidor no la maneja; es responsabilidad de Flutter.
 - Fase 2 (capa social): reviews, photos, follows, badges, user_badges, interactions. Las tablas
   existen, pero **no se les hacen endpoints todavía**.
 - Fase 3: recomendador inteligente (clima, hábitos, embeddings).

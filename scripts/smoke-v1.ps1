@@ -126,6 +126,8 @@ if (-not $SkipSwagger) {
     $requiredPaths = @(
         "/auth/register",
         "/auth/login",
+        "/auth/confirm-email",
+        "/auth/resend-confirmation",
         "/me",
         "/groups",
         "/groups/{id}",
@@ -184,6 +186,14 @@ $declinerReg = Invoke-ApiJson -Name "POST /auth/register decliner" -Method POST 
 Assert-True ($ownerReg.Status -eq 201) "Registro owner no regreso 201."
 Assert-True ($guestReg.Status -eq 201) "Registro guest no regreso 201."
 Assert-True ($declinerReg.Status -eq 201) "Registro decliner no regreso 201."
+
+# Con AutoConfirmEmail=true el usuario llega confirmado de inmediato.
+Assert-True ([bool]$ownerReg.Json.user.emailConfirmed) "Owner debe tener email_confirmed=true (AutoConfirmEmail)."
+Assert-True ([bool]$guestReg.Json.user.emailConfirmed) "Guest debe tener email_confirmed=true (AutoConfirmEmail)."
+
+# El endpoint resend-confirmation responde 200 siempre (anti-enumeracion).
+$resendResp = Invoke-ApiJson -Name "POST /auth/resend-confirmation" -Method POST -Path "/auth/resend-confirmation" -Body @{ email = $ownerEmail }
+Assert-True ($resendResp.Status -eq 200) "resend-confirmation no regreso 200."
 
 $ownerId = [guid]$ownerReg.Json.user.id
 $guestId = [guid]$guestReg.Json.user.id

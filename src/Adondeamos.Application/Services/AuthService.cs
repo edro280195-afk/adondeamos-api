@@ -1,8 +1,10 @@
 using Adondeamos.Application.Abstractions;
 using Adondeamos.Application.Common.Exceptions;
+using Adondeamos.Application.Common.Options;
 using Adondeamos.Application.DTOs.Auth;
 using Adondeamos.Domain.Entities;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace Adondeamos.Application.Services;
 
@@ -16,6 +18,8 @@ public sealed class AuthService
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<UpdateMeRequest> _updateMeValidator;
+    private readonly EmailConfirmationService _emailConfirmation;
+    private readonly AuthOptions _authOptions;
 
     public AuthService(
         IUserRepository users,
@@ -24,7 +28,9 @@ public sealed class AuthService
         IUnitOfWork unitOfWork,
         IValidator<RegisterRequest> registerValidator,
         IValidator<LoginRequest> loginValidator,
-        IValidator<UpdateMeRequest> updateMeValidator)
+        IValidator<UpdateMeRequest> updateMeValidator,
+        EmailConfirmationService emailConfirmation,
+        IOptions<AuthOptions> authOptions)
     {
         _users = users;
         _passwordHasher = passwordHasher;
@@ -33,6 +39,8 @@ public sealed class AuthService
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
         _updateMeValidator = updateMeValidator;
+        _emailConfirmation = emailConfirmation;
+        _authOptions = authOptions.Value;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -57,11 +65,16 @@ public sealed class AuthService
             Name = request.Name.Trim(),
             Username = username,
             Email = email,
-            PasswordHash = _passwordHasher.Hash(request.Password)
+            PasswordHash = _passwordHasher.Hash(request.Password),
+            // Si AutoConfirmEmail está activo, el correo queda confirmado de inmediato (modo dev/pruebas).
+            EmailConfirmed = _authOptions.AutoConfirmEmail
         };
 
         _users.Add(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Siempre genera y envía el token (en dev lo loguea; en prod lo manda por SMTP).
+        await _emailConfirmation.GenerateAndSendAsync(user, cancellationToken);
 
         return BuildAuthResponse(user);
     }
@@ -78,6 +91,12 @@ public sealed class AuthService
             || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             throw new UnauthorizedException("Usuario o contraseña incorrectos.");
+        }
+
+        // Guard de email confirmado: solo bloquea si la opción está activa en configuración.
+        if (_authOptions.RequireConfirmedEmailToLogin && !user.EmailConfirmed)
+        {
+            throw new ForbiddenException("Debes confirmar tu correo antes de iniciar sesión.");
         }
 
         return BuildAuthResponse(user);
