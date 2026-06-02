@@ -1,6 +1,172 @@
-@Adondeamos.Api_HostAddress = http://localhost:5172
+@host = http://localhost:5172
 
-GET {{Adondeamos.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Health check
+GET {{host}}/health
 
-###
+### Registro (guarda el token de la respuesta en @token)
+# @name register
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Eduardo",
+  "email": "eduardo@example.com",
+  "password": "supersecreta123"
+}
+
+### Login
+# @name login
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "eduardo@example.com",
+  "password": "supersecreta123"
+}
+
+### Token a usar en los endpoints protegidos (tómalo de register o login)
+@token = {{login.response.body.accessToken}}
+
+### Mi perfil
+GET {{host}}/me
+Authorization: Bearer {{token}}
+
+### Actualizar mi perfil
+PATCH {{host}}/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Eduardo R."
+}
+
+### Crear un grupo
+# @name createGroup
+POST {{host}}/groups
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Eduardo y esposa"
+}
+
+### Mis grupos
+GET {{host}}/groups
+Authorization: Bearer {{token}}
+
+### Agregar miembro al grupo (por correo)
+POST {{host}}/groups/{{createGroup.response.body.id}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "otra@example.com"
+}
+
+### Buscar lugares (Autocomplete de Google)
+GET {{host}}/places/search?q=tacos nuevo laredo
+Authorization: Bearer {{token}}
+
+### Resolver un lugar de Google (usa un place_id real de /places/search)
+# @name resolvePlace
+POST {{host}}/places/resolve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "googlePlaceId": "PEGA_AQUI_UN_PLACE_ID"
+}
+
+### Crear un lugar propio
+# @name createOwnPlace
+POST {{host}}/places
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Tacos de la esquina",
+  "latitude": 27.476,
+  "longitude": -99.516,
+  "city": "Nuevo Laredo"
+}
+
+### Guardar un lugar (usa el id del lugar resuelto o propio)
+# @name createSave
+POST {{host}}/saves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "placeId": "{{createOwnPlace.response.body.id}}",
+  "sourceNetwork": "tiktok",
+  "sourceUrl": "https://www.tiktok.com/@alguien/video/123",
+  "note": "Ir un viernes, pedir los de pastor"
+}
+
+### Mis guardados (filtros opcionales: ?status=pending|visited y ?listId=...)
+GET {{host}}/saves
+Authorization: Bearer {{token}}
+
+### Marcar un guardado como visitado
+PATCH {{host}}/saves/{{createSave.response.body.id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visited": true
+}
+
+### Crear una lista (personal; agrega "groupId" para una de grupo)
+# @name createList
+POST {{host}}/lists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Quiero ir"
+}
+
+### Agregar un guardado a la lista
+POST {{host}}/lists/{{createList.response.body.id}}/items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saveId": "{{createSave.response.body.id}}"
+}
+
+### Detalle de la lista con sus elementos
+GET {{host}}/lists/{{createList.response.body.id}}
+Authorization: Bearer {{token}}
+
+### Iniciar una decisión (en solitario; agrega "groupId" para una de grupo)
+# @name createDecision
+POST {{host}}/decisions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "context": "Viernes en la noche, presupuesto medio"
+}
+
+### Agregar opciones (auto-llena desde los guardados pendientes de los participantes)
+POST {{host}}/decisions/{{createDecision.response.body.id}}/options
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "autoFillFromSaves": true
+}
+
+### Votar una opción (toma el optionId del GET de la decisión)
+POST {{host}}/decisions/{{createDecision.response.body.id}}/options/PEGA_AQUI_OPTION_ID/votes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isYes": true
+}
+
+### Estado de la decisión (incluye el match calculado)
+GET {{host}}/decisions/{{createDecision.response.body.id}}
+Authorization: Bearer {{token}}
