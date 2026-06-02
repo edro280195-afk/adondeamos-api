@@ -1,9 +1,15 @@
 services:
   - type: web
     name: adondeamos-api
-    runtime: docker
-    rootDir: .
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    healthCheckPath: /health
     envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
       - key: ConnectionStrings__Default
         sync: false
       - key: Jwt__Secret
@@ -23,12 +29,6 @@ services:
       - key: Auth__AutoConfirmEmail
         value: "false"
       - key: Auth__RequireConfirmedEmailToLogin
-        value: "true"
+        value: "false"
       - key: App__ConfirmEmailUrlBase
         value: "https://adondeamos-api.onrender.com"
-      - key: Cors__AllowedOrigins__0
-        value: "https://adondeamos.app"
-      - key: ASPNETCORE_ENVIRONMENT
-        value: Production
-    plan: free
-    healthCheckPath: /health
