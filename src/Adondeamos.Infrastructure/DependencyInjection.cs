@@ -1,5 +1,6 @@
 using Adondeamos.Application.Abstractions;
 using Adondeamos.Domain.Enums;
+using Adondeamos.Infrastructure.Google;
 using Adondeamos.Infrastructure.Persistence;
 using Adondeamos.Infrastructure.Repositories;
 using Adondeamos.Infrastructure.Security;
@@ -50,6 +51,10 @@ public static class DependencyInjection
         // Repositorios
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IPlaceRepository, PlaceRepository>();
+
+        // Cliente de Google Places (Places API New)
+        services.AddGooglePlaces(configuration);
 
         return services;
     }
