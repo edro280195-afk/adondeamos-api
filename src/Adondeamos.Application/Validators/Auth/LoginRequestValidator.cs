@@ -7,8 +7,8 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()
     {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("El correo es obligatorio.");
+        RuleFor(x => x.Username)
+            .NotEmpty().WithMessage("El nombre de usuario es obligatorio.");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("La contraseña es obligatoria.");

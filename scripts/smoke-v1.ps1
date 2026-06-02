@@ -154,22 +154,30 @@ if (-not $SkipSwagger) {
 }
 
 $runId = (Get-Date -Format "yyyyMMddHHmmss") + "-" + ((New-Guid).ToString("N").Substring(0, 8))
+# username: solo letras, números, puntos y guiones bajos; 3-50 chars. Se deriva del runId eliminando el guion.
+$runSlug = $runId -replace "-", "_"
+$ownerUsername = "owner_$runSlug"
+$guestUsername = "guest_$runSlug"
+$declinerUsername = "dec_$runSlug"
 $ownerEmail = "smoke-owner-$runId@example.com"
 $guestEmail = "smoke-guest-$runId@example.com"
 $declinerEmail = "smoke-decliner-$runId@example.com"
 
 $ownerReg = Invoke-ApiJson -Name "POST /auth/register owner" -Method POST -Path "/auth/register" -Body @{
     name = "Smoke Owner $runId"
+    username = $ownerUsername
     email = $ownerEmail
     password = $Password
 }
 $guestReg = Invoke-ApiJson -Name "POST /auth/register guest" -Method POST -Path "/auth/register" -Body @{
     name = "Smoke Guest $runId"
+    username = $guestUsername
     email = $guestEmail
     password = $Password
 }
 $declinerReg = Invoke-ApiJson -Name "POST /auth/register decliner" -Method POST -Path "/auth/register" -Body @{
     name = "Smoke Decliner $runId"
+    username = $declinerUsername
     email = $declinerEmail
     password = $Password
 }
@@ -182,15 +190,15 @@ $guestId = [guid]$guestReg.Json.user.id
 $declinerId = [guid]$declinerReg.Json.user.id
 
 $ownerLogin = Invoke-ApiJson -Name "POST /auth/login owner" -Method POST -Path "/auth/login" -Body @{
-    email = $ownerEmail
+    username = $ownerUsername
     password = $Password
 }
 $guestLogin = Invoke-ApiJson -Name "POST /auth/login guest" -Method POST -Path "/auth/login" -Body @{
-    email = $guestEmail
+    username = $guestUsername
     password = $Password
 }
 $declinerLogin = Invoke-ApiJson -Name "POST /auth/login decliner" -Method POST -Path "/auth/login" -Body @{
-    email = $declinerEmail
+    username = $declinerUsername
     password = $Password
 }
 
@@ -374,9 +382,9 @@ Invoke-ApiJson -Name "DELETE /saves/{id} guest" -Method DELETE -Path "/saves/$([
 $summary = [pscustomobject]@{
     runId = $runId
     baseUrl = $BaseUrl
-    owner = @{ id = $ownerId; email = $ownerEmail }
-    guest = @{ id = $guestId; email = $guestEmail }
-    decliner = @{ id = $declinerId; email = $declinerEmail }
+    owner = @{ id = $ownerId; username = $ownerUsername; email = $ownerEmail }
+    guest = @{ id = $guestId; username = $guestUsername; email = $guestEmail }
+    decliner = @{ id = $declinerId; username = $declinerUsername; email = $declinerEmail }
     group = @{ id = $groupId; membersAfterAccept = $groupAfterOwner.Json.members.Count }
     invitation = @{
         id = $invitationId

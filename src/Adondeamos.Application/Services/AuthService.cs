@@ -40,14 +40,22 @@ public sealed class AuthService
         await _registerValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var email = request.Email.Trim();
+        var username = request.Username.Trim();
+
         if (await _users.EmailExistsAsync(email, cancellationToken))
         {
             throw new ConflictException("Ya existe una cuenta con ese correo.");
         }
 
+        if (await _users.UsernameExistsAsync(username, cancellationToken))
+        {
+            throw new ConflictException("El nombre de usuario ya está en uso.");
+        }
+
         var user = new User
         {
             Name = request.Name.Trim(),
+            Username = username,
             Email = email,
             PasswordHash = _passwordHasher.Hash(request.Password)
         };
@@ -62,14 +70,14 @@ public sealed class AuthService
     {
         await _loginValidator.ValidateAndThrowAsync(request, cancellationToken);
 
-        var user = await _users.GetByEmailAsync(request.Email.Trim(), cancellationToken);
+        var user = await _users.GetByUsernameAsync(request.Username.Trim(), cancellationToken);
 
-        // Sin distinguir si falló el correo o la contraseña (no se filtra qué cuentas existen).
+        // Sin distinguir si falló el usuario o la contraseña (no se filtra qué cuentas existen).
         if (user is null
             || string.IsNullOrEmpty(user.PasswordHash)
             || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedException("Correo o contraseña incorrectos.");
+            throw new UnauthorizedException("Usuario o contraseña incorrectos.");
         }
 
         return BuildAuthResponse(user);

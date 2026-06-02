@@ -16,22 +16,22 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
 ## Decisiones técnicas (fijas)
 
 - **ASP.NET Core, .NET 10 LTS.**
-- **PostgreSQL en Neon.** El esquema YA está aplicado; la fuente de verdad es
-  [`db/001_init_schema.sql`](db/001_init_schema.sql). **NO se recrea ni se altera el esquema.**
+- **PostgreSQL en Neon.** El esquema YA está aplicado; la fuente de verdad son los archivos `db/`.
+  **NO se recrea ni se altera el esquema** sin un nuevo archivo SQL versionado.
 - **EF Core mapeado al esquema existente. NO se usan migraciones de EF Core.** Las entidades se
   escriben a mano para calzar exacto con las tablas. El mapeo a `snake_case` lo aplica
   `UseSnakeCaseNamingConvention` (paquete `EFCore.NamingConventions`).
 - Los **enums** del esquema (`place_origin`, `social_network`, etc.) se mapean como enums nativos de
-  PostgreSQL: `MapEnum<T>` en el data source y en las opciones de `UseNpgsql`, `HasPostgresEnum<T>`
-  en el `DbContext`, y `HasColumnType(...)` en cada propiedad enum. Los nombres de los miembros C#
-  se traducen a las etiquetas SQL con `NpgsqlSnakeCaseNameTranslator`.
+  PostgreSQL: `MapEnum<T>` en el data source y `HasPostgresEnum<T>` en el `DbContext`. Los nombres de
+  los miembros C# se traducen a las etiquetas SQL con `NpgsqlSnakeCaseNameTranslator`.
 - **IDs y timestamps** los genera la base (`gen_random_uuid()`, `now()` y triggers `set_updated_at`);
   EF los marca como generados por el almacén y los lee de vuelta.
-- **Autenticación con JWT** (register/login). Contraseñas con **BCrypt**. Login social: después.
+- **Autenticación con JWT** (register/login por **username**, no por email). Contraseñas con **BCrypt**.
+  Login social queda para después.
 - **Swagger/OpenAPI** habilitado. **CORS** configurado para pruebas locales, Swagger, Flutter web
   opcional o una futura consola admin. El cliente V1 principal será **Flutter nativo**.
 - **Health check** en `GET /health` (Render lo necesita; evita cold starts). Es liveness simple, no toca la base.
-- Errores centralizados con **ProblemDetails** y códigos correctos (400/401/403/404/409).
+- Errores centralizados con **ProblemDetails** y códigos correctos (400/401/403/404/409/502).
 - **Arquitectura por capas.**
 
 ## Reglas CRÍTICAS de Google Places (cumplimiento legal)
@@ -48,18 +48,41 @@ Google Maps) y decidir a dónde ir, solo o en pareja/grupo.
 
 ```
 Adondeamos.slnx
-db/001_init_schema.sql          # Esquema base (aplicado en Neon)
-db/002_group_invitations.sql    # Invitaciones a grupos (aplicar en Neon antes de usar grupos)
+db/
+  001_init_schema.sql          # Esquema base (aplicado en Neon)
+  002_group_invitations.sql    # Tabla group_invitations + enum invitation_status
+  003_add_username_to_users.sql# Columna username en users (índice único lower(username))
+scripts/
+  smoke-v1.ps1                 # Smoke test end-to-end del flujo V1 completo
 src/
-  Adondeamos.Domain/            # Entidades y enums (calcan el esquema). Sin dependencias.
+  Adondeamos.Domain/           # Entidades y enums (calcan el esquema). Sin dependencias.
     Entities/  Enums/
-  Adondeamos.Application/       # DTOs, validadores, servicios, interfaces (repos, JWT, hasher, Google).
+  Adondeamos.Application/      # DTOs, validadores, servicios, interfaces (repos, JWT, hasher, Google).
     Abstractions/  Common/  DTOs/  Services/  Validators/
-  Adondeamos.Infrastructure/    # DbContext, repositorios, JWT, hasher, cliente de Google Places.
+  Adondeamos.Infrastructure/   # DbContext, repositorios, JWT, hasher, cliente de Google Places.
     Persistence/  Repositories/  Security/  Google/
-  Adondeamos.Api/               # Controllers, middleware, Program.cs, configuración.
+  Adondeamos.Api/              # Controllers, middleware, Program.cs, configuración.
     Controllers/  Extensions/  Middleware/
 ```
+
+## Modelo de datos relevante
+
+### Tabla `users` (después de db/001 + db/003)
+
+| columna | tipo | notas |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `username` | text UNIQUE | login principal; `lower(username)` único |
+| `name` | text | nombre visible |
+| `email` | text UNIQUE | registro/contacto; no es el campo de login |
+| `password_hash` | text | BCrypt; nulo si solo login social |
+| `avatar_url` | text | URL de la foto de perfil |
+| `created_at` / `updated_at` | timestamptz | trigger automático |
+
+### Enums nativos (PostgreSQL)
+
+`place_origin`, `social_network`, `save_status`, `content_visibility`, `group_role`,
+`invitation_status` — todos mapeados con `NpgsqlSnakeCaseNameTranslator`.
 
 ## Cómo corre el acceso a datos
 

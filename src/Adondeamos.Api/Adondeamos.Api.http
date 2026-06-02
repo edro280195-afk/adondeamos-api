@@ -10,17 +10,18 @@ Content-Type: application/json
 
 {
   "name": "Eduardo",
+  "username": "eduardo_rdz",
   "email": "eduardo@example.com",
   "password": "supersecreta123"
 }
 
-### Login
+### Login (por username, no por email)
 # @name login
 POST {{host}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "eduardo@example.com",
+  "username": "eduardo_rdz",
   "password": "supersecreta123"
 }
 
