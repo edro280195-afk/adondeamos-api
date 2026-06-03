@@ -86,8 +86,8 @@ public sealed class GooglePlacesClient : IGooglePlacesClient
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("X-Goog-Api-Key", _apiKey);
-        // Field mask obligatorio: solo lo necesario para mostrar (control de costo).
-        request.Headers.Add("X-Goog-FieldMask", "id,displayName,formattedAddress,location");
+        // photos se trae bajo demanda junto con los datos del lugar (control de costo con field mask).
+        request.Headers.Add("X-Goog-FieldMask", "id,displayName,formattedAddress,location,photos");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -105,12 +105,53 @@ public sealed class GooglePlacesClient : IGooglePlacesClient
             return null;
         }
 
+        // Resuelve la primera foto disponible (no se guarda; muéstrase con atribución).
+        string? photoUrl = null;
+        string? photoAttribution = null;
+        var firstPhoto = details.Photos?.FirstOrDefault();
+        if (firstPhoto?.Name is not null)
+        {
+            (photoUrl, photoAttribution) = await ResolvePhotoUrlAsync(firstPhoto, cancellationToken);
+        }
+
         return new GooglePlaceDetails(
             details.Id,
             details.DisplayName?.Text,
             details.FormattedAddress,
             details.Location is null ? null : (decimal)details.Location.Latitude,
-            details.Location is null ? null : (decimal)details.Location.Longitude);
+            details.Location is null ? null : (decimal)details.Location.Longitude,
+            photoUrl,
+            photoAttribution);
+    }
+
+    /// <summary>
+    /// Llama a /{photo.Name}/media con skipHttpRedirect=true para obtener la URL pública
+    /// de la CDN de Google sin seguir un redirect. Devuelve (null, null) si falla silenciosamente.
+    /// </summary>
+    private async Task<(string? url, string? attribution)> ResolvePhotoUrlAsync(PhotoDto photo, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // photo.Name ya incluye el prefijo "places/..." → URL completa con base.
+            var mediaUrl = $"{_baseUrl}{photo.Name}/media?maxWidthPx=800&skipHttpRedirect=true";
+            using var request = new HttpRequestMessage(HttpMethod.Get, mediaUrl);
+            request.Headers.Add("X-Goog-Api-Key", _apiKey);
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return (null, null);
+            }
+
+            var media = await response.Content.ReadFromJsonAsync<PhotoMediaResponse>(cancellationToken);
+            var attribution = photo.AuthorAttributions?.FirstOrDefault()?.DisplayName;
+            return (media?.PhotoUri, attribution);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[Google Photos] No se pudo obtener la foto del lugar.");
+            return (null, null);
+        }
     }
 
     private void EnsureApiKey()
@@ -164,11 +205,31 @@ public sealed class GooglePlacesClient : IGooglePlacesClient
         public TextValue? DisplayName { get; set; }
         public string? FormattedAddress { get; set; }
         public LatLng? Location { get; set; }
+        public List<PhotoDto>? Photos { get; set; }
     }
 
     private sealed class LatLng
     {
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+    }
+
+    private sealed class PhotoDto
+    {
+        /// <summary>Resource name en el formato places/{id}/photos/{ref}. Sirve como ruta para /media.</summary>
+        public string? Name { get; set; }
+        public List<AuthorAttribution>? AuthorAttributions { get; set; }
+    }
+
+    private sealed class AuthorAttribution
+    {
+        public string? DisplayName { get; set; }
+        public string? Uri { get; set; }
+    }
+
+    private sealed class PhotoMediaResponse
+    {
+        /// <summary>URL pública de la foto en la CDN de Google (lh3.googleusercontent.com).</summary>
+        public string? PhotoUri { get; set; }
     }
 }
