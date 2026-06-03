@@ -4,6 +4,7 @@ using Adondeamos.Application.Services;
 using Adondeamos.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mime;
 
 namespace Adondeamos.Api.Controllers;
 
@@ -60,6 +61,42 @@ public sealed class SavesController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         await _saveService.DeleteSaveAsync(User.GetUserId(), id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Sube o reemplaza la foto de portada de un guardado (multipart/form-data, campo "file").
+    /// Reemplaza la foto anterior si ya existía.
+    /// </summary>
+    [HttpPost("{id:guid}/photo")]
+    [Consumes(MediaTypeNames.Multipart.FormData)]
+    [ProducesResponseType(typeof(PhotoUploadResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PhotoUploadResponse>> UploadPhoto(
+        Guid id, IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { error = "El campo 'file' es obligatorio y no puede estar vacío." });
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await _saveService.UploadPhotoAsync(
+            User.GetUserId(), id, stream, file.ContentType, file.Length, cancellationToken);
+
+        return Ok(result);
+    }
+
+    /// <summary>Elimina la foto de portada de un guardado.</summary>
+    [HttpDelete("{id:guid}/photo")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken cancellationToken)
+    {
+        await _saveService.DeletePhotoAsync(User.GetUserId(), id, cancellationToken);
         return NoContent();
     }
 }

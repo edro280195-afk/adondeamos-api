@@ -10,24 +10,30 @@ namespace Adondeamos.Application.Services;
 /// <summary>Guardados, que pertenecen siempre a un usuario.</summary>
 public sealed class SaveService
 {
+    private static readonly string[] AllowedContentTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    private const long MaxPhotoBytes = 10 * 1024 * 1024; // 10 MB
+
     private readonly ISaveRepository _saves;
     private readonly IPlaceRepository _places;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IValidator<CreateSaveRequest> _createValidator;
     private readonly IValidator<UpdateSaveRequest> _updateValidator;
+    private readonly IPhotoStorage _photoStorage;
 
     public SaveService(
         ISaveRepository saves,
         IPlaceRepository places,
         IUnitOfWork unitOfWork,
         IValidator<CreateSaveRequest> createValidator,
-        IValidator<UpdateSaveRequest> updateValidator)
+        IValidator<UpdateSaveRequest> updateValidator,
+        IPhotoStorage photoStorage)
     {
         _saves = saves;
         _places = places;
         _unitOfWork = unitOfWork;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _photoStorage = photoStorage;
     }
 
     public async Task<SaveResponse> CreateSaveAsync(Guid userId, CreateSaveRequest request, CancellationToken cancellationToken = default)
@@ -122,6 +128,75 @@ public sealed class SaveService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Sube o reemplaza la foto de portada del guardado. El stream no se cierra aquí.
+    /// </summary>
+    public async Task<PhotoUploadResponse> UploadPhotoAsync(
+        Guid userId, Guid saveId, Stream photoStream, string contentType, long fileSize,
+        CancellationToken cancellationToken = default)
+    {
+        if (!AllowedContentTypes.Contains(contentType.ToLowerInvariant()))
+        {
+            throw new ValidationException($"Tipo de archivo no permitido: {contentType}. Solo se aceptan imágenes (JPEG, PNG, WebP, GIF).");
+        }
+
+        if (fileSize > MaxPhotoBytes)
+        {
+            throw new ValidationException($"La imagen no puede superar los 10 MB.");
+        }
+
+        var save = await _saves.GetByIdWithPlaceAsync(saveId, cancellationToken)
+            ?? throw new NotFoundException("Guardado no encontrado.");
+
+        if (save.UserId != userId)
+        {
+            throw new ForbiddenException("Este guardado no es tuyo.");
+        }
+
+        // Elimina la foto anterior si era nuestra (evita huérfanos en el almacenamiento).
+        if (save.ThumbnailUrl is not null)
+        {
+            var oldKey = _photoStorage.TryGetKeyFromUrl(save.ThumbnailUrl);
+            if (oldKey is not null)
+            {
+                await _photoStorage.DeleteAsync(oldKey, cancellationToken);
+            }
+        }
+
+        var ext = ExtensionFromContentType(contentType);
+        var key = $"saves/{saveId}/cover.{ext}";
+        var newUrl = await _photoStorage.UploadAsync(key, photoStream, contentType, cancellationToken);
+
+        save.ThumbnailUrl = newUrl;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new PhotoUploadResponse(saveId, newUrl);
+    }
+
+    /// <summary>Elimina la foto de portada del guardado y limpia el campo.</summary>
+    public async Task DeletePhotoAsync(Guid userId, Guid saveId, CancellationToken cancellationToken = default)
+    {
+        var save = await _saves.GetByIdAsync(saveId, cancellationToken)
+            ?? throw new NotFoundException("Guardado no encontrado.");
+
+        if (save.UserId != userId)
+        {
+            throw new ForbiddenException("Este guardado no es tuyo.");
+        }
+
+        if (save.ThumbnailUrl is not null)
+        {
+            var key = _photoStorage.TryGetKeyFromUrl(save.ThumbnailUrl);
+            if (key is not null)
+            {
+                await _photoStorage.DeleteAsync(key, cancellationToken);
+            }
+
+            save.ThumbnailUrl = null;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+    }
+
     private static string? Clean(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -131,4 +206,13 @@ public sealed class SaveService
 
         return value.Trim();
     }
+
+    private static string ExtensionFromContentType(string contentType) =>
+        contentType.ToLowerInvariant() switch
+        {
+            "image/png" => "png",
+            "image/webp" => "webp",
+            "image/gif" => "gif",
+            _ => "jpg"
+        };
 }
