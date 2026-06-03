@@ -21,6 +21,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Sirve archivos de wwwroot/uploads en dev (LocalPhotoStorage).
+app.UseStaticFiles();
+
 app.UseCors(ServiceCollectionExtensions.CorsPolicyName);
 
 app.UseAuthentication();

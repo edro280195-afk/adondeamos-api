@@ -3,9 +3,11 @@ using Adondeamos.Application.Common.Options;
 using Adondeamos.Domain.Enums;
 using Adondeamos.Infrastructure.Email;
 using Adondeamos.Infrastructure.Google;
+using Adondeamos.Infrastructure.Http;
 using Adondeamos.Infrastructure.Persistence;
 using Adondeamos.Infrastructure.Repositories;
 using Adondeamos.Infrastructure.Security;
+using Adondeamos.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +89,24 @@ public static class DependencyInjection
 
         // Cliente de Google Places (Places API New)
         services.AddGooglePlaces(configuration);
+
+        // Almacenamiento de fotos: S3-compatible si hay credenciales; local (dev) si no.
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
+        var storageOptions = configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
+        if (storageOptions.S3.IsConfigured)
+        {
+            services.AddSingleton<IPhotoStorage, S3PhotoStorage>();
+        }
+        else
+        {
+            services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
+        }
+
+        // Resolver de redirects (para enlaces cortos de Maps).
+        services.AddHttpClient<ILinkResolver, LinkResolver>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         return services;
     }
