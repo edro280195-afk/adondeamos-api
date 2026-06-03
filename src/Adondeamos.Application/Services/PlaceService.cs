@@ -72,6 +72,8 @@ public sealed class PlaceService
             {
                 Origin = PlaceOrigin.Google,
                 GooglePlaceId = googlePlaceId,
+                // Guardamos el nombre para mostrarlo en listas sin necesitar otra llamada a Google.
+                Name = details.DisplayName,
                 CreatedBy = userId
             };
             _places.Add(created);
