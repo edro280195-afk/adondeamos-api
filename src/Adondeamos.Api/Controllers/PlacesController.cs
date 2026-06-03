@@ -53,4 +53,22 @@ public sealed class PlacesController : ControllerBase
         var place = await _placeService.CreateOwnAsync(User.GetUserId(), request, cancellationToken);
         return Created($"/places/{place.Id}", place);
     }
+
+    /// <summary>
+    /// Intenta resolver un enlace (Google Maps, TikTok, Instagram, etc.).
+    /// — Si es de Maps: resuelve el lugar y lo devuelve (resolved=true).
+    /// — Si no es de Maps: devuelve la red detectada y la URL para que el cliente
+    ///   inicie el flujo de búsqueda/manual (resolved=false).
+    /// </summary>
+    [HttpPost("resolve-link")]
+    [ProducesResponseType(typeof(ResolveLinkResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public async Task<ActionResult<ResolveLinkResponse>> ResolveLink(
+        ResolveLinkRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _placeService.ResolveLinkAsync(User.GetUserId(), request, cancellationToken);
+        return Ok(result);
+    }
 }
